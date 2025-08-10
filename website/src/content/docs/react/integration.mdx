@@ -1,0 +1,314 @@
+---
+title: React Integration
+description: Learn how to integrate EmbedPDF into React or Next.js, understand the plugin architecture, and compose the viewer UI.
+---
+
+## Overview
+
+This guide shows how to embed PDF viewing in React using the EmbedPDF ecosystem:
+
+- Engine layer (Pdfium-based) to decode and rasterize PDFs
+- Core layer with `EmbedPDF` and the `PluginRegistry`
+- Plugins that provide capabilities (rendering, scrolling, zoom, selection, tiling, etc.)
+- React UI components and hooks that bind capabilities into an app layout
+
+You will learn the hierarchy, each moving piece, and how to compose a production-quality viewer in React and Next.js.
+
+## Architecture at a glance
+
+- Engine (from `@embedpdf/engines`) creates a `PdfEngine` instance (usually Pdfium in a Web Worker)
+- Core (from `@embedpdf/core`) exposes the `PluginRegistry` and the `EmbedPDF` component
+- Plugins (from `@embedpdf/plugin-*`) register into the registry and provide capabilities via manifests
+- React components (from each plugin’s `.../react` entry) render UI or bind behaviors to the registry
+
+Flow:
+
+1. `usePdfiumEngine()` creates/initializes the engine (worker or direct)
+2. `EmbedPDF` constructs a `PluginRegistry`, registers your plugins, initializes them, and exposes context
+3. Child components (Viewport, Scroller, RenderLayer, TilingLayer, SelectionLayer, etc.) read capabilities and render
+4. `pluginsReady` signals when all plugins have completed their ready phase
+
+## Installation
+
+Install the core, engines, and the plugins you plan to use:
+
+```bash
+pnpm add @embedpdf/core @embedpdf/engines \
+  @embedpdf/plugin-loader @embedpdf/plugin-viewport @embedpdf/plugin-scroll @embedpdf/plugin-render \
+  @embedpdf/plugin-zoom @embedpdf/plugin-tiling @embedpdf/plugin-rotate @embedpdf/plugin-spread \
+  @embedpdf/plugin-fullscreen @embedpdf/plugin-export @embedpdf/plugin-interaction-manager \
+  @embedpdf/plugin-selection @embedpdf/plugin-pan @embedpdf/plugin-thumbnail
+```
+
+Or with npm:
+
+```bash
+npm install @embedpdf/core @embedpdf/engines \
+  @embedpdf/plugin-loader @embedpdf/plugin-viewport @embedpdf/plugin-scroll @embedpdf/plugin-render \
+  @embedpdf/plugin-zoom @embedpdf/plugin-tiling @embedpdf/plugin-rotate @embedpdf/plugin-spread \
+  @embedpdf/plugin-fullscreen @embedpdf/plugin-export @embedpdf/plugin-interaction-manager \
+  @embedpdf/plugin-selection @embedpdf/plugin-pan @embedpdf/plugin-thumbnail
+```
+
+Notes:
+
+- Each plugin is independent; install only what you need. The examples below use a common set.
+- React entrypoints are subpath imports, e.g. `@embedpdf/core/react`, `@embedpdf/engines/react`, and each plugin’s `/react` subpath for components.
+
+## Next.js prerequisites (important)
+
+- Use a Client Component for your viewer (add `'use client'` at the top of the file).
+- Host `pdfium.wasm` (and its loader JS) under `public/wasm` or use the default CDN.
+  - This repository already includes `website/public/wasm/pdfium.wasm` and `pdfium.js` for reference.
+
+## Minimal React example
+
+```tsx
+'use client'
+
+import { useRef } from 'react'
+import { EmbedPDF } from '@embedpdf/core/react'
+import { usePdfiumEngine } from '@embedpdf/engines/react'
+import { createPluginRegistration } from '@embedpdf/core'
+import { LoaderPluginPackage } from '@embedpdf/plugin-loader'
+import { ViewportPluginPackage } from '@embedpdf/plugin-viewport'
+import { ScrollPluginPackage, ScrollStrategy } from '@embedpdf/plugin-scroll'
+import { ZoomMode, ZoomPluginPackage } from '@embedpdf/plugin-zoom'
+import { TilingPluginPackage } from '@embedpdf/plugin-tiling'
+import { RenderPluginPackage } from '@embedpdf/plugin-render'
+
+export default function MyPdf() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { engine, isLoading, error } = usePdfiumEngine({
+    // Optionally prefer a local WASM for Next.js
+    // wasmUrl: '/wasm/pdfium.wasm',
+    // worker: true, // default true: run Pdfium in a Web Worker
+  })
+
+  if (error) return <div>Error: {error.message}</div>
+  if (isLoading || !engine) return <div>Loading…</div>
+
+  return (
+    <div ref={containerRef} style={{ height: '100vh', display: 'flex' }}>
+      <EmbedPDF
+        engine={engine}
+        plugins={[
+          createPluginRegistration(LoaderPluginPackage, {
+            loadingOptions: {
+              type: 'url',
+              pdfFile: { id: 'example', url: '/demo.pdf' },
+              options: { mode: 'full-fetch' },
+            },
+          }),
+          createPluginRegistration(ViewportPluginPackage, { viewportGap: 8 }),
+          createPluginRegistration(ScrollPluginPackage, { strategy: ScrollStrategy.Vertical }),
+          createPluginRegistration(RenderPluginPackage),
+          createPluginRegistration(TilingPluginPackage, { tileSize: 768, overlapPx: 2.5 }),
+          createPluginRegistration(ZoomPluginPackage, { defaultZoomLevel: ZoomMode.FitPage }),
+        ]}
+      >
+        {({ pluginsReady }) => (
+          <div style={{ flex: 1, overflow: 'auto', background: '#f6f7f9' }}>
+            {pluginsReady ? 'Viewer ready' : 'Initializing plugins…'}
+          </div>
+        )}
+      </EmbedPDF>
+    </div>
+  )
+}
+```
+
+This establishes the engine and registers the core plugins. Next, we’ll render a full viewer UI.
+
+## Full viewer composition (recommended)
+
+The following adds scrolling, layout, page rendering, tiling, rotation, selection, pointer modes, fullscreen, export, thumbnails, and more—mirroring the example app.
+
+```tsx
+'use client'
+
+import { useRef } from 'react'
+import { EmbedPDF } from '@embedpdf/core/react'
+import { usePdfiumEngine } from '@embedpdf/engines/react'
+import { createPluginRegistration } from '@embedpdf/core'
+import { LoaderPluginPackage } from '@embedpdf/plugin-loader'
+import { ViewportPluginPackage } from '@embedpdf/plugin-viewport'
+import { ScrollPluginPackage, ScrollStrategy } from '@embedpdf/plugin-scroll'
+import { ZoomMode, ZoomPluginPackage } from '@embedpdf/plugin-zoom'
+import { TilingPluginPackage } from '@embedpdf/plugin-tiling'
+import { RotatePluginPackage } from '@embedpdf/plugin-rotate'
+import { SpreadPluginPackage } from '@embedpdf/plugin-spread'
+import { FullscreenPluginPackage } from '@embedpdf/plugin-fullscreen'
+import { ExportPluginPackage } from '@embedpdf/plugin-export'
+import { RenderPluginPackage } from '@embedpdf/plugin-render'
+import { InteractionManagerPluginPackage } from '@embedpdf/plugin-interaction-manager'
+import { SelectionPluginPackage } from '@embedpdf/plugin-selection'
+import { PanPluginPackage } from '@embedpdf/plugin-pan'
+import { ThumbnailPluginPackage } from '@embedpdf/plugin-thumbnail'
+
+// React UI bindings from plugin packages
+import { Viewport } from '@embedpdf/plugin-viewport/react'
+import { Scroller } from '@embedpdf/plugin-scroll/react'
+import { TilingLayer } from '@embedpdf/plugin-tiling/react'
+import { Rotate } from '@embedpdf/plugin-rotate/react'
+import { FullscreenProvider } from '@embedpdf/plugin-fullscreen/react'
+import { Download } from '@embedpdf/plugin-export/react'
+import { RenderLayer } from '@embedpdf/plugin-render/react'
+import { GlobalPointerProvider, PagePointerProvider } from '@embedpdf/plugin-interaction-manager/react'
+import { PanMode } from '@embedpdf/plugin-pan/react'
+import { SelectionLayer } from '@embedpdf/plugin-selection/react'
+import { FilePicker } from '@embedpdf/plugin-loader/react'
+
+export default function DocumentViewer() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { engine, isLoading, error } = usePdfiumEngine({
+    // wasmUrl: '/wasm/pdfium.wasm',
+  })
+
+  if (error) return <div>Error: {error.message}</div>
+  if (isLoading || !engine) return <div>Loading…</div>
+
+  return (
+    <div ref={containerRef} style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <EmbedPDF
+        engine={engine}
+        plugins={[
+          createPluginRegistration(LoaderPluginPackage, {
+            loadingOptions: {
+              type: 'url',
+              pdfFile: { id: '1', url: '/demo.pdf' },
+              options: { mode: 'full-fetch' },
+            },
+          }),
+          createPluginRegistration(ViewportPluginPackage, { viewportGap: 10 }),
+          createPluginRegistration(ScrollPluginPackage, { strategy: ScrollStrategy.Vertical }),
+          createPluginRegistration(RenderPluginPackage),
+          createPluginRegistration(TilingPluginPackage, { tileSize: 768, overlapPx: 2.5, extraRings: 0 }),
+          createPluginRegistration(ZoomPluginPackage, { defaultZoomLevel: ZoomMode.FitPage }),
+          createPluginRegistration(RotatePluginPackage),
+          createPluginRegistration(SpreadPluginPackage),
+          createPluginRegistration(FullscreenPluginPackage),
+          createPluginRegistration(ExportPluginPackage),
+          createPluginRegistration(InteractionManagerPluginPackage),
+          createPluginRegistration(SelectionPluginPackage),
+          createPluginRegistration(PanPluginPackage),
+          createPluginRegistration(ThumbnailPluginPackage),
+        ]}
+      >
+        {({ pluginsReady }) => (
+          <FullscreenProvider>
+            <GlobalPointerProvider>
+              <PanMode />
+              <Viewport style={{ flex: 1, overflow: 'auto', background: '#f6f7f9' }}>
+                {pluginsReady ? (
+                  <Scroller
+                    renderPage={({ pageIndex, scale, width, height, document, rotation, rotatedWidth, rotatedHeight }) => (
+                      <Rotate key={document?.id} pageSize={{ width, height }}>
+                        <PagePointerProvider
+                          rotation={rotation}
+                          scale={scale}
+                          pageWidth={rotatedWidth}
+                          pageHeight={rotatedHeight}
+                          pageIndex={pageIndex}
+                          style={{ width, height }}
+                        >
+                          <RenderLayer pageIndex={pageIndex} className="pointer-events-none" />
+                          <TilingLayer pageIndex={pageIndex} scale={scale} className="pointer-events-none" />
+                          <SelectionLayer pageIndex={pageIndex} scale={scale} />
+                        </PagePointerProvider>
+                      </Rotate>
+                    )}
+                  />
+                ) : (
+                  <div>Loading plugins…</div>
+                )}
+              </Viewport>
+              <Download />
+              <FilePicker />
+            </GlobalPointerProvider>
+          </FullscreenProvider>
+        )}
+      </EmbedPDF>
+    </div>
+  )
+}
+```
+
+## Hierarchy and responsibilities
+
+- Engine (`usePdfiumEngine`) – Creates a `PdfEngine`. With `worker: true` (default), Pdfium runs in a Web Worker. You can specify a custom `wasmUrl`.
+  - Default WASM: `https://cdn.jsdelivr.net/npm/@embedpdf/pdfium@<version>/dist/pdfium.wasm`
+  - Next.js: prefer a local `public/wasm/pdfium.wasm` for predictable hosting
+- EmbedPDF – Creates a `PluginRegistry`, registers all `plugins`, initializes them, and provides context to children. Exposes `{ registry, isInitializing, pluginsReady }` to its function children.
+- PluginRegistry – Loads plugins respecting their dependency graph and tracks capability providers. Call `pluginsReady()` to await readiness.
+- Plugins – Each plugin has a manifest with `provides`, `requires`, `optional`, and `defaultConfig`. During initialization, plugins register capabilities and may expose hooks/components.
+
+## Core plugins and what they do
+
+- Loader (`@embedpdf/plugin-loader`) – Loads documents from URL, memory, custom strategies, and provides file-picking UI hooks
+- Viewport (`@embedpdf/plugin-viewport`) – Manages outer container padding (`viewportGap`) and measurement refs
+- Scroll (`@embedpdf/plugin-scroll`) – Computes virtual layout and scrolling strategy (Vertical or Horizontal; supports spreads)
+- Render (`@embedpdf/plugin-render`) – Rasterizes pages and produces image blobs
+- Tiling (`@embedpdf/plugin-tiling`) – Breaks pages into tiles for large/zoomed rendering; streams tiles into view
+- Zoom (`@embedpdf/plugin-zoom`) – Stores current zoom and provides zoom helpers (FitPage, FitWidth, custom scales)
+- Rotate (`@embedpdf/plugin-rotate`) – Applies rotation transforms
+- Spread (`@embedpdf/plugin-spread`) – Lays out pages in spreads (e.g., two-up)
+- Fullscreen (`@embedpdf/plugin-fullscreen`) – Orchestrates full screen mode; `FullscreenProvider` binds keyboard and UI hooks
+- Export (`@embedpdf/plugin-export`) – Saves copy as PDF. `Download` listens for export requests and triggers a hidden anchor
+- Interaction Manager (`@embedpdf/plugin-interaction-manager`) – Unified pointer/mode system. `GlobalPointerProvider` and `PagePointerProvider` wire pointer events to plugins
+- Selection (`@embedpdf/plugin-selection`) – Text selection capability; renders highlight rects; depends on interaction manager
+- Pan (`@embedpdf/plugin-pan`) – Pointer mode to pan the document
+- Thumbnail (`@embedpdf/plugin-thumbnail`) – Generates thumbnails pane (optional UI layer)
+
+## React UI bindings from plugins
+
+- Viewport – Wraps the scroll area, applies padding from the viewport capability
+- Scroller – Computes and renders the page grid; calls your `renderPage` for each page layout
+- Rotate – Applies rotation transform per page
+- RenderLayer – Renders the page image for `pageIndex`
+- TilingLayer – Streams and renders tiles per page
+- SelectionLayer – Draws text selection highlights and handles pointer selection lifecycle
+- GlobalPointerProvider / PagePointerProvider – Wire pointer events to the interaction-manager
+- PanMode – Activates the panning mode
+- Download – Invisible anchor that triggers file download when export plugin requests it
+- FilePicker – UI control that opens a file dialog via the loader capability
+
+## Configuration reference (selected)
+
+- Loader: `{ loadingOptions: { type: 'url' | 'bytes' | 'custom', pdfFile?: { id, url }, options?: { mode: 'full-fetch' | 'range-fetch' } } }`
+- Viewport: `{ viewportGap: number }`
+- Scroll: `{ strategy: ScrollStrategy.Vertical | ScrollStrategy.Horizontal }`
+- Zoom: `{ defaultZoomLevel: ZoomMode }`
+- Tiling: `{ tileSize: number, overlapPx?: number, extraRings?: number }`
+
+## Lifecycle and readiness
+
+`EmbedPDF` exposes `pluginsReady` in its render-prop children. Render heavy UI only after this becomes `true`. You can still show layout skeletons earlier.
+
+```tsx
+<EmbedPDF engine={engine} plugins={[/* ... */]}>
+  {({ pluginsReady }) => (pluginsReady ? <Viewer /> : <Skeleton />)}
+</EmbedPDF>
+```
+
+## Error handling
+
+`usePdfiumEngine` returns `{ engine, isLoading, error }`. If the WASM fails to load or the worker init fails, `error` will be set. Always gate on both `isLoading` and `engine`.
+
+## SSR notes
+
+- The viewer must run on the client; mark your component with `'use client'`.
+- Do not import heavy plugin code at the server layer.
+
+## Performance tips
+
+- Prefer `worker: true` (default) so Pdfium work happens off the main thread
+- Use the Tiling plugin for large PDFs or deep zoom
+- Start with `ZoomMode.FitPage`, then adapt to user interaction
+
+## Next steps
+
+- Explore plugin-specific docs under each `@embedpdf/plugin-*` package
+- Add a UI shell (toolbars, zoom controls, thumbnails pane) using the provided capabilities
+
+

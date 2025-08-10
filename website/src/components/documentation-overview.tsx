@@ -1,71 +1,84 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
+import { useState, type ReactNode } from "react";
 import {
-  ArrowRight,
-  Book,
-  Code,
-  Package,
-  Github,
-  Search,
-  Terminal,
-  Zap,
-  FileText,
-  Settings,
-  Menu,
-  ChevronRight,
-  ExternalLink,
-} from 'lucide-react'
-import Link from 'next/link'
-import { Scribble3 } from './icons/scribble3'
-import DiscordIcon from './icons/discord'
-import NeedHelp from './need-help'
+	ArrowRight,
+	Book,
+	Code,
+	Package,
+	Github,
+	Search,
+	Terminal,
+	Zap,
+	FileText,
+	Settings,
+	Menu,
+	ChevronRight,
+	ExternalLink,
+} from "lucide-react";
+import Link from "next/link";
+import { Scribble3 } from "./icons/scribble3";
+import DiscordIcon from "./icons/discord";
+import NeedHelp from "./need-help";
 
 // Mock documentation packages data
 const packages = [
-  {
-    id: 'snippet',
-    name: '@embedpdf/snippet',
-    description:
-      'The complete, highest-level package with built-in UI and controls. Drop it into any website with just a simple snippet - no build tools required.',
-    icon: <Code className="h-6 w-6 text-white" />,
-    color: 'from-emerald-500 to-teal-600',
-    tags: ['Complete UI', 'Ready to Use', 'No Build Required'],
-    sections: [{ title: 'Introduction', url: '/docs/snippet/introduction' }],
-    url: '/docs/snippet/introduction',
-    latestVersion: '1.0.0',
-    lastUpdated: 'May 29, 2025',
-  },
-  {
-    id: 'engine',
-    name: '@embedpdf/engines',
-    description:
-      'Pluggable rendering engines for EmbedPDF. Ships with PdfiumEngine – a high‑level, promise‑first wrapper with advanced PDF processing capabilities.',
-    icon: <Zap className="h-6 w-6 text-white" />,
-    color: 'from-blue-600 to-cyan-600',
-    tags: ['High-level API', 'Universal Runtime', 'TypeScript', 'PDFium'],
-    sections: [{ title: 'Introduction', url: '/docs/engines/introduction' }],
-    url: '/docs/engines/introduction',
-    latestVersion: '1.0.0',
-    lastUpdated: 'May 29, 2025',
-  },
-  {
-    id: 'pdfium',
-    name: '@embedpdf/pdfium',
-    description:
-      'JavaScript API wrapper for PDFium rendering engine, providing low-level PDF manipulation capabilities.',
-    icon: <FileText className="h-6 w-6 text-white" />,
-    color: 'from-purple-600 to-blue-700',
-    tags: ['Core', 'Rendering', 'Low-level API'],
-    sections: [
-      { title: 'Introduction', url: '/docs/pdfium/introduction' },
-      { title: 'Getting Started', url: '/docs/pdfium/getting-started' },
-    ],
-    url: '/docs/pdfium/introduction',
-    latestVersion: '1.0.0',
-    lastUpdated: 'May 29, 2025',
-  },
-  /*
+	{
+		id: "snippet",
+		name: "@embedpdf/snippet",
+		description:
+			"The complete, highest-level package with built-in UI and controls. Drop it into any website with just a simple snippet - no build tools required.",
+		icon: <Code className="h-6 w-6 text-white" />,
+		color: "from-emerald-500 to-teal-600",
+		tags: ["Complete UI", "Ready to Use", "No Build Required"],
+		sections: [{ title: "Introduction", url: "/docs/snippet/introduction" }],
+		url: "/docs/snippet/introduction",
+		latestVersion: "1.0.0",
+		lastUpdated: "May 29, 2025",
+	},
+	{
+		id: "react",
+		name: "React Integration",
+		description:
+			"How to use EmbedPDF in React and Next.js: engine hook, EmbedPDF component, plugin architecture, and UI components.",
+		icon: <Code className="h-6 w-6 text-white" />,
+		color: "from-cyan-600 to-teal-600",
+		tags: ["React", "Hooks", "Components", "Plugins"],
+		sections: [{ title: "Integration Guide", url: "/docs/react/integration" }],
+		url: "/docs/react/integration",
+		latestVersion: "1.0.0",
+		lastUpdated: "May 29, 2025",
+	},
+	{
+		id: "engine",
+		name: "@embedpdf/engines",
+		description:
+			"Pluggable rendering engines for EmbedPDF. Ships with PdfiumEngine – a high‑level, promise‑first wrapper with advanced PDF processing capabilities.",
+		icon: <Zap className="h-6 w-6 text-white" />,
+		color: "from-blue-600 to-cyan-600",
+		tags: ["High-level API", "Universal Runtime", "TypeScript", "PDFium"],
+		sections: [{ title: "Introduction", url: "/docs/engines/introduction" }],
+		url: "/docs/engines/introduction",
+		latestVersion: "1.0.0",
+		lastUpdated: "May 29, 2025",
+	},
+	{
+		id: "pdfium",
+		name: "@embedpdf/pdfium",
+		description:
+			"JavaScript API wrapper for PDFium rendering engine, providing low-level PDF manipulation capabilities.",
+		icon: <FileText className="h-6 w-6 text-white" />,
+		color: "from-purple-600 to-blue-700",
+		tags: ["Core", "Rendering", "Low-level API"],
+		sections: [
+			{ title: "Introduction", url: "/docs/pdfium/introduction" },
+			{ title: "Getting Started", url: "/docs/pdfium/getting-started" },
+		],
+		url: "/docs/pdfium/introduction",
+		latestVersion: "1.0.0",
+		lastUpdated: "May 29, 2025",
+	},
+	/*
   {
     id: "engine",
     name: "@embedpdf/engine",
@@ -151,224 +164,222 @@ const packages = [
     latestVersion: "1.1.0",
     lastUpdated: "January 10, 2025"
   }*/
-]
+];
 
 // Animated background
 const AnimatedBackground = () => {
-  return (
-    <div className="absolute inset-0 -z-10">
-      {/* Gradient circles */}
-      <div className="animate-blob absolute left-10 top-20 h-64 w-64 rounded-full bg-purple-500 opacity-10 mix-blend-multiply blur-3xl filter"></div>
-      <div className="animate-blob animation-delay-2000 absolute right-10 top-40 h-72 w-72 rounded-full bg-blue-500 opacity-10 mix-blend-multiply blur-3xl filter"></div>
-      <div className="animate-blob animation-delay-4000 absolute bottom-32 left-20 h-80 w-80 rounded-full bg-teal-500 opacity-10 mix-blend-multiply blur-3xl filter"></div>
+	return (
+		<div className="absolute inset-0 -z-10">
+			{/* Gradient circles */}
+			<div className="animate-blob absolute left-10 top-20 h-64 w-64 rounded-full bg-purple-500 opacity-10 mix-blend-multiply blur-3xl filter" />
+			<div className="animate-blob animation-delay-2000 absolute right-10 top-40 h-72 w-72 rounded-full bg-blue-500 opacity-10 mix-blend-multiply blur-3xl filter" />
+			<div className="animate-blob animation-delay-4000 absolute bottom-32 left-20 h-80 w-80 rounded-full bg-teal-500 opacity-10 mix-blend-multiply blur-3xl filter" />
 
-      {/* Documentation pattern */}
-      <div className="bg-grid-pattern opacity-3 absolute inset-0"></div>
-    </div>
-  )
-}
+			{/* Documentation pattern */}
+			<div className="bg-grid-pattern opacity-3 absolute inset-0" />
+		</div>
+	);
+};
 
 // Package card
 const PackageCard = ({
-  pkg,
+	pkg,
 }: {
-  pkg: {
-    id: string
-    name: string
-    description: string
-    icon: React.ReactNode
-    color: string
-    tags: string[]
-    sections: { title: string; url: string }[]
-    latestVersion: string
-    lastUpdated: string
-    url: string
-  }
+	pkg: {
+		id: string;
+		name: string;
+		description: string;
+		icon: ReactNode;
+		color: string;
+		tags: string[];
+		sections: { title: string; url: string }[];
+		latestVersion: string;
+		lastUpdated: string;
+		url: string;
+	};
 }) => {
-  return (
-    <div className="group relative">
-      <div
-        className={`absolute -inset-0.5 bg-gradient-to-r ${pkg.color} rounded-2xl opacity-10 blur transition duration-300 group-hover:opacity-30`}
-      ></div>
-      <div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md">
-        <div className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div
-              className={`h-12 w-12 rounded-lg bg-gradient-to-br ${pkg.color} flex items-center justify-center`}
-            >
-              {pkg.icon}
-            </div>
-          </div>
+	return (
+		<div className="group relative">
+			<div
+				className={`absolute -inset-0.5 bg-gradient-to-r ${pkg.color} rounded-2xl opacity-10 blur transition duration-300 group-hover:opacity-30`}
+			/>
+			<div className="relative flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-md">
+				<div className="p-6">
+					<div className="mb-4 flex items-center justify-between">
+						<div
+							className={`h-12 w-12 rounded-lg bg-gradient-to-br ${pkg.color} flex items-center justify-center`}
+						>
+							{pkg.icon}
+						</div>
+					</div>
 
-          <h3 className="mb-2 font-mono text-xl font-bold text-gray-900 transition-colors group-hover:text-blue-600">
-            {pkg.name}
-          </h3>
+					<h3 className="mb-2 font-mono text-xl font-bold text-gray-900 transition-colors group-hover:text-blue-600">
+						{pkg.name}
+					</h3>
 
-          <p className="mb-6 text-gray-600">{pkg.description}</p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {pkg.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center whitespace-nowrap rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-          {/*<div className="flex items-center text-sm text-gray-500 mb-4">
+					<p className="mb-6 text-gray-600">{pkg.description}</p>
+					<div className="mb-4 flex flex-wrap gap-2">
+						{pkg.tags.map((tag) => (
+							<span
+								key={tag}
+								className="inline-flex items-center whitespace-nowrap rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
+							>
+								{tag}
+							</span>
+						))}
+					</div>
+					{/*<div className="flex items-center text-sm text-gray-500 mb-4">
             <span className="font-mono bg-gray-100 px-2 py-1 rounded text-gray-700">v{pkg.latestVersion}</span>
             <span className="mx-2">•</span>
             <span>Updated: {pkg.lastUpdated}</span>
           </div>*/}
 
-          <div className="mt-auto border-t border-gray-100 pt-4">
-            <h4 className="mb-2 font-medium text-gray-900">Documentation:</h4>
-            <ul className="mb-6 space-y-1">
-              {pkg.sections.map(
-                (section: { title: string; url: string }, index: number) => (
-                  <li key={index}>
-                    <Link
-                      href={section.url}
-                      className="flex items-center text-gray-600 transition-all hover:pl-1 hover:text-blue-600"
-                    >
-                      <ChevronRight size={14} className="mr-1" />
-                      {section.title}
-                    </Link>
-                  </li>
-                ),
-              )}
-            </ul>
-          </div>
+					<div className="mt-auto border-t border-gray-100 pt-4">
+						<h4 className="mb-2 font-medium text-gray-900">Documentation:</h4>
+						<ul className="mb-6 space-y-1">
+							{pkg.sections.map((section: { title: string; url: string }) => (
+								<li key={section.url}>
+									<Link
+										href={section.url}
+										className="flex items-center text-gray-600 transition-all hover:pl-1 hover:text-blue-600"
+									>
+										<ChevronRight size={14} className="mr-1" />
+										{section.title}
+									</Link>
+								</li>
+							))}
+						</ul>
+					</div>
 
-          <Link
-            href={pkg.url}
-            className={`inline-flex items-center rounded-full bg-gradient-to-r px-4 py-2 ${pkg.color} text-sm font-medium text-white transition-shadow hover:shadow-md`}
-          >
-            View Full Documentation
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-}
+					<Link
+						href={pkg.url}
+						className={`inline-flex items-center rounded-full bg-gradient-to-r px-4 py-2 ${pkg.color} text-sm font-medium text-white transition-shadow hover:shadow-md`}
+					>
+						View Full Documentation
+						<ArrowRight className="ml-2 h-4 w-4" />
+					</Link>
+				</div>
+			</div>
+		</div>
+	);
+};
 
 // Getting started card
 const GettingStartedCard = () => {
-  return (
-    <div className="relative mb-12 overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-lg">
-      <div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/2 transform rounded-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-30 blur-xl"></div>
-      <div className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 transform rounded-full bg-gradient-to-br from-blue-500 to-teal-500 opacity-20 blur-xl"></div>
+	return (
+		<div className="relative mb-12 overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-lg">
+			<div className="absolute right-0 top-0 h-64 w-64 -translate-y-1/2 translate-x-1/2 transform rounded-full bg-gradient-to-br from-purple-500 to-blue-500 opacity-30 blur-xl" />
+			<div className="absolute bottom-0 left-0 h-64 w-64 -translate-x-1/2 translate-y-1/2 transform rounded-full bg-gradient-to-br from-blue-500 to-teal-500 opacity-20 blur-xl" />
 
-      <div className="relative z-10 p-8 md:p-10">
-        <div className="flex flex-col gap-8 md:flex-row md:items-center">
-          <div className="md:flex-1">
-            <div className="mb-4 inline-block rounded-full bg-blue-500/20 px-4 py-1 text-sm font-medium text-blue-300">
-              New to EmbedPDF?
-            </div>
-            <h2 className="mb-4 text-3xl font-bold">Getting Started Guide</h2>
-            <p className="mb-6 text-lg text-gray-300">
-              Learn the fundamentals of integrating PDF viewing into your
-              applications with our step-by-step introduction.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/docs/introduction"
-                className="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-blue-700"
-              >
-                <Book className="mr-2 h-5 w-5" />
-                Read the Guide
-              </Link>
-              <Link
-                href="/docs/quickstart"
-                className="inline-flex items-center rounded-lg bg-gray-700 px-5 py-2.5 font-medium text-white transition-colors hover:bg-gray-600"
-              >
-                <Zap className="mr-2 h-5 w-5" />
-                Quick Start
-              </Link>
-            </div>
-          </div>
+			<div className="relative z-10 p-8 md:p-10">
+				<div className="flex flex-col gap-8 md:flex-row md:items-center">
+					<div className="md:flex-1">
+						<div className="mb-4 inline-block rounded-full bg-blue-500/20 px-4 py-1 text-sm font-medium text-blue-300">
+							New to EmbedPDF?
+						</div>
+						<h2 className="mb-4 text-3xl font-bold">Getting Started Guide</h2>
+						<p className="mb-6 text-lg text-gray-300">
+							Learn the fundamentals of integrating PDF viewing into your
+							applications with our step-by-step introduction.
+						</p>
+						<div className="flex flex-wrap gap-4">
+							<Link
+								href="/docs/introduction"
+								className="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white transition-colors hover:bg-blue-700"
+							>
+								<Book className="mr-2 h-5 w-5" />
+								Read the Guide
+							</Link>
+							<Link
+								href="/docs/quickstart"
+								className="inline-flex items-center rounded-lg bg-gray-700 px-5 py-2.5 font-medium text-white transition-colors hover:bg-gray-600"
+							>
+								<Zap className="mr-2 h-5 w-5" />
+								Quick Start
+							</Link>
+						</div>
+					</div>
 
-          <div className="overflow-hidden rounded-lg bg-gray-800 shadow-xl md:w-72">
-            <div className="flex items-center bg-gray-700 px-4 py-2 font-mono text-xs text-gray-300">
-              <span>Terminal</span>
-            </div>
-            <div className="p-4 font-mono text-sm text-gray-300">
-              <p className="text-green-400">$ npm install @embedpdf/engine</p>
-              <p className="mt-2 text-gray-500"># or with yarn</p>
-              <p className="text-green-400">$ yarn add @embedpdf/engine</p>
-              <p className="mt-4 text-gray-400">
-                {'// Import in your project'}
-              </p>
-              <p className="text-blue-300">
-                import {'{ PDFViewer }'} from{' '}
-                <span className="text-orange-300">
-                  &apos;@embedpdf/engine&apos;
-                </span>
-                ;
-              </p>
-              <p className="mt-2 text-gray-400">{'// Initialize the viewer'}</p>
-              <p className="text-blue-300">
-                const viewer = new PDFViewer({'{'}
-                <br />
-                &nbsp;&nbsp;container:{' '}
-                <span className="text-orange-300">
-                  &apos;#pdf-container&apos;
-                </span>
-                ,
-                <br />
-                &nbsp;&nbsp;url:{' '}
-                <span className="text-orange-300">
-                  &apos;./document.pdf&apos;
-                </span>
-                <br />
-                {'}'});
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+					<div className="overflow-hidden rounded-lg bg-gray-800 shadow-xl md:w-72">
+						<div className="flex items-center bg-gray-700 px-4 py-2 font-mono text-xs text-gray-300">
+							<span>Terminal</span>
+						</div>
+						<div className="p-4 font-mono text-sm text-gray-300">
+							<p className="text-green-400">$ npm install @embedpdf/engine</p>
+							<p className="mt-2 text-gray-500"># or with yarn</p>
+							<p className="text-green-400">$ yarn add @embedpdf/engine</p>
+							<p className="mt-4 text-gray-400">
+								{"// Import in your project"}
+							</p>
+							<p className="text-blue-300">
+								import {"{ PDFViewer }"} from{" "}
+								<span className="text-orange-300">
+									&apos;@embedpdf/engine&apos;
+								</span>
+								;
+							</p>
+							<p className="mt-2 text-gray-400">{"// Initialize the viewer"}</p>
+							<p className="text-blue-300">
+								const viewer = new PDFViewer({"{"}
+								<br />
+								&nbsp;&nbsp;container:{" "}
+								<span className="text-orange-300">
+									&apos;#pdf-container&apos;
+								</span>
+								,
+								<br />
+								&nbsp;&nbsp;url:{" "}
+								<span className="text-orange-300">
+									&apos;./document.pdf&apos;
+								</span>
+								<br />
+								{"}"});
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+};
 
 // Documentation section
 const DocSection = ({
-  title,
-  icon,
-  children,
+	title,
+	icon,
+	children,
 }: {
-  title: string
-  icon: React.ReactNode
-  children: React.ReactNode
+	title: string;
+	icon: React.ReactNode;
+	children: React.ReactNode;
 }) => {
-  return (
-    <div className="mb-12">
-      <div className="mb-6 flex items-center space-x-3">
-        <div className="rounded-lg bg-blue-100 p-2 text-blue-700">{icon}</div>
-        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-      </div>
-      {children}
-    </div>
-  )
-}
+	return (
+		<div className="mb-12">
+			<div className="mb-6 flex items-center space-x-3">
+				<div className="rounded-lg bg-blue-100 p-2 text-blue-700">{icon}</div>
+				<h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+			</div>
+			{children}
+		</div>
+	);
+};
 
 const DocsOverview = () => {
-  const [searchQuery, setSearchQuery] = useState('')
+	const [searchQuery, setSearchQuery] = useState("");
 
-  // Filter packages based on search
-  const filteredPackages = packages.filter(
-    (pkg) =>
-      pkg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pkg.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      pkg.tags.some((tag) =>
-        tag.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-  )
+	// Filter packages based on search
+	const filteredPackages = packages.filter(
+		(pkg) =>
+			pkg.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			pkg.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			pkg.tags.some((tag) =>
+				tag.toLowerCase().includes(searchQuery.toLowerCase()),
+			),
+	);
 
-  return (
-    <div className="relative min-h-screen">
-      <style jsx>{`
+	return (
+		<div className="relative min-h-screen">
+			<style jsx>{`
         @keyframes blob {
           0% {
             transform: translate(0px, 0px) scale(1);
@@ -412,34 +423,34 @@ const DocsOverview = () => {
         }
       `}</style>
 
-      <AnimatedBackground />
+			<AnimatedBackground />
 
-      <div className="pb-16 pt-20 sm:pt-24 lg:pt-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Documentation Header */}
-          <div className="mb-24 text-center">
-            <div className="mb-6 inline-block rounded-full border border-blue-200 bg-blue-50 px-6 py-2 text-sm font-medium text-blue-800">
-              Documentation
-            </div>
-            <h1 className="mb-6 text-4xl font-black leading-tight tracking-tight text-gray-900 md:text-5xl">
-              <span className="relative inline-block">
-                <span className="relative z-10">Everything you need</span>
-                <div className="absolute bottom-1 left-0 right-0 -z-10 h-4 -rotate-1 transform opacity-50">
-                  <Scribble3 color="#bedbff" />
-                </div>
-              </span>
-              <span className="block bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
-                to build amazing PDF experiences
-              </span>
-            </h1>
-            <p className="mx-auto max-w-2xl text-xl text-gray-600">
-              Comprehensive documentation for all EmbedPDF packages, with
-              guides, API references, and examples.
-            </p>
-          </div>
+			<div className="pb-16 pt-20 sm:pt-24 lg:pt-28">
+				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+					{/* Documentation Header */}
+					<div className="mb-24 text-center">
+						<div className="mb-6 inline-block rounded-full border border-blue-200 bg-blue-50 px-6 py-2 text-sm font-medium text-blue-800">
+							Documentation
+						</div>
+						<h1 className="mb-6 text-4xl font-black leading-tight tracking-tight text-gray-900 md:text-5xl">
+							<span className="relative inline-block">
+								<span className="relative z-10">Everything you need</span>
+								<div className="absolute bottom-1 left-0 right-0 -z-10 h-4 -rotate-1 transform opacity-50">
+									<Scribble3 color="#bedbff" />
+								</div>
+							</span>
+							<span className="block bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
+								to build amazing PDF experiences
+							</span>
+						</h1>
+						<p className="mx-auto max-w-2xl text-xl text-gray-600">
+							Comprehensive documentation for all EmbedPDF packages, with
+							guides, API references, and examples.
+						</p>
+					</div>
 
-          {/* Search */}
-          {/*<div className="relative max-w-xl mx-auto mb-12">
+					{/* Search */}
+					{/*<div className="relative max-w-xl mx-auto mb-12">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={20} className="text-gray-400" />
             </div>
@@ -452,31 +463,31 @@ const DocsOverview = () => {
             />
           </div>*/}
 
-          {/* Getting Started Section */}
-          {/* <GettingStartedCard /> */}
+					{/* Getting Started Section */}
+					{/* <GettingStartedCard /> */}
 
-          {/* Main Documentation */}
-          <DocSection title="Available Packages" icon={<Package size={20} />}>
-            {searchQuery && filteredPackages.length === 0 ? (
-              <div className="rounded-xl bg-gray-50 py-12 text-center">
-                <div className="text-2xl font-bold text-gray-400">
-                  No packages found
-                </div>
-                <p className="mt-2 text-gray-500">
-                  Try adjusting your search query
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                {filteredPackages.map((pkg) => (
-                  <PackageCard key={pkg.id} pkg={pkg} />
-                ))}
-              </div>
-            )}
-          </DocSection>
+					{/* Main Documentation */}
+					<DocSection title="Available Packages" icon={<Package size={20} />}>
+						{searchQuery && filteredPackages.length === 0 ? (
+							<div className="rounded-xl bg-gray-50 py-12 text-center">
+								<div className="text-2xl font-bold text-gray-400">
+									No packages found
+								</div>
+								<p className="mt-2 text-gray-500">
+									Try adjusting your search query
+								</p>
+							</div>
+						) : (
+							<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+								{filteredPackages.map((pkg) => (
+									<PackageCard key={pkg.id} pkg={pkg} />
+								))}
+							</div>
+						)}
+					</DocSection>
 
-          {/* Examples Section */}
-          {/* 
+					{/* Examples Section */}
+					{/* 
           <DocSection title="Quick Examples" icon={<Code size={20} />}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> 
               <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
@@ -556,8 +567,8 @@ function MyPDFViewer() {
           </DocSection>
           */}
 
-          {/* Resources Section */}
-          {/*
+					{/* Resources Section */}
+					{/*
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 p-6 rounded-xl">
               <div className="mb-4 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">
@@ -605,11 +616,11 @@ function MyPDFViewer() {
             </div>
           </div>*/}
 
-          {/* Community Support */}
-          <NeedHelp />
+					{/* Community Support */}
+					<NeedHelp />
 
-          {/* Newsletter */}
-          {/*<div className="text-center pb-8">
+					{/* Newsletter */}
+					{/*<div className="text-center pb-8">
             <h2 className="text-2xl font-bold mb-4">Stay Updated</h2>
             <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
               Subscribe to our newsletter for the latest documentation updates, new features, and best practices.
@@ -628,10 +639,10 @@ function MyPDFViewer() {
               </button>
             </div>
           </div>*/}
-        </div>
-      </div>
-    </div>
-  )
-}
+				</div>
+			</div>
+		</div>
+	);
+};
 
-export default DocsOverview
+export default DocsOverview;
