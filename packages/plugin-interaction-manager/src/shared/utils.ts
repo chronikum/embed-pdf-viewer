@@ -1,199 +1,225 @@
-import { Position } from '@embedpdf/models';
+import { Position } from "@embedpdf/models";
 import type {
-  InteractionManagerCapability,
-  InteractionScope,
-  PointerEventHandlers,
-  EmbedPdfPointerEvent,
-} from '@embedpdf/plugin-interaction-manager';
+	InteractionManagerCapability,
+	InteractionScope,
+	PointerEventHandlers,
+	EmbedPdfPointerEvent,
+} from "@embedpdf/plugin-interaction-manager";
 
 /* -------------------------------------------------- */
 /* event → handler key lookup                         */
 /* -------------------------------------------------- */
 type K = keyof PointerEventHandlers;
 const domEventMap: Record<string, K> = {
-  pointerdown: 'onPointerDown',
-  pointerup: 'onPointerUp',
-  pointermove: 'onPointerMove',
-  pointerenter: 'onPointerEnter',
-  pointerleave: 'onPointerLeave',
-  pointercancel: 'onPointerCancel',
+	pointerdown: "onPointerDown",
+	pointerup: "onPointerUp",
+	pointermove: "onPointerMove",
+	pointerenter: "onPointerEnter",
+	pointerleave: "onPointerLeave",
+	pointercancel: "onPointerCancel",
 
-  mousedown: 'onMouseDown',
-  mouseup: 'onMouseUp',
-  mousemove: 'onMouseMove',
-  mouseenter: 'onMouseEnter',
-  mouseleave: 'onMouseLeave',
-  mousecancel: 'onMouseCancel',
+	mousedown: "onMouseDown",
+	mouseup: "onMouseUp",
+	mousemove: "onMouseMove",
+	mouseenter: "onMouseEnter",
+	mouseleave: "onMouseLeave",
+	mousecancel: "onMouseCancel",
 
-  click: 'onClick',
-  dblclick: 'onDoubleClick',
+	click: "onClick",
+	dblclick: "onDoubleClick",
 
-  /* touch → pointer fallback for very old browsers */
-  touchstart: 'onPointerDown',
-  touchend: 'onPointerUp',
-  touchmove: 'onPointerMove',
-  touchcancel: 'onPointerCancel',
+	/* touch → pointer fallback for very old browsers */
+	touchstart: "onPointerDown",
+	touchend: "onPointerUp",
+	touchmove: "onPointerMove",
+	touchcancel: "onPointerCancel",
 };
 
 const pointerEventTypes = [
-  'pointerdown',
-  'pointerup',
-  'pointermove',
-  'pointerenter',
-  'pointerleave',
-  'pointercancel',
-  'mousedown',
-  'mouseup',
-  'mousemove',
-  'mouseenter',
-  'mouseleave',
-  'mousecancel',
-  'click',
-  'dblclick',
+	"pointerdown",
+	"pointerup",
+	"pointermove",
+	"pointerenter",
+	"pointerleave",
+	"pointercancel",
+	"mousedown",
+	"mouseup",
+	"mousemove",
+	"mouseenter",
+	"mouseleave",
+	"mousecancel",
+	"click",
+	"dblclick",
 ];
 
-const touchEventTypes = ['touchstart', 'touchend', 'touchmove', 'touchcancel'];
+const touchEventTypes = ["touchstart", "touchend", "touchmove", "touchcancel"];
 const allEventTypes = [...pointerEventTypes, ...touchEventTypes];
 
 /* -------------------------------------------------- */
 /* helper: decide listener options per event type     */
 /* -------------------------------------------------- */
-function listenerOpts(eventType: string, wantsRawTouch: boolean): AddEventListenerOptions {
-  // Only touch events are toggled; pointer/mouse stay non-passive
-  return eventType.startsWith('touch') ? { passive: !wantsRawTouch } : { passive: false };
+function listenerOpts(
+	eventType: string,
+	wantsRawTouch: boolean,
+): AddEventListenerOptions {
+	// Only touch events are toggled; pointer/mouse stay non-passive
+	return eventType.startsWith("touch")
+		? { passive: !wantsRawTouch }
+		: { passive: false };
+}
+
+/* -------------------------------------------------- */
+/* helper: feature-safe TouchEvent check               */
+/* -------------------------------------------------- */
+function isTouchEvent(evt: Event): evt is TouchEvent {
+	// Firefox desktop and some environments do not define TouchEvent globally
+	// Using typeof avoids ReferenceError when TouchEvent is not defined
+	return typeof TouchEvent !== "undefined" && evt instanceof TouchEvent;
 }
 
 /* -------------------------------------------------- */
 /* createPointerProvider                              */
 /* -------------------------------------------------- */
 export function createPointerProvider(
-  cap: InteractionManagerCapability,
-  scope: InteractionScope,
-  element: HTMLElement,
-  convertEventToPoint?: (evt: PointerEvent, host: HTMLElement) => Position,
+	cap: InteractionManagerCapability,
+	scope: InteractionScope,
+	element: HTMLElement,
+	convertEventToPoint?: (evt: PointerEvent, host: HTMLElement) => Position,
 ) {
-  /* ---------- live handler set --------------------------------------------------- */
-  let active: PointerEventHandlers | null = cap.getHandlersForScope(scope);
+	/* ---------- live handler set --------------------------------------------------- */
+	let active: PointerEventHandlers | null = cap.getHandlersForScope(scope);
 
-  /* ---------- helper to compute current wantsRawTouch (defaults to true) --------- */
-  const wantsRawTouchNow = () => cap.getActiveInteractionMode()?.wantsRawTouch !== false; // default → true
+	/* ---------- helper to compute current wantsRawTouch (defaults to true) --------- */
+	const wantsRawTouchNow = () =>
+		cap.getActiveInteractionMode()?.wantsRawTouch !== false; // default → true
 
-  /* ---------- dynamic listener (re)attachment ------------------------------------ */
-  const listeners: Record<string, (evt: Event) => void> = {};
-  let attachedWithRawTouch = wantsRawTouchNow(); // remember current mode’s wish
+	/* ---------- dynamic listener (re)attachment ------------------------------------ */
+	const listeners: Record<string, (evt: Event) => void> = {};
+	let attachedWithRawTouch = wantsRawTouchNow(); // remember current mode’s wish
 
-  const addListeners = (raw: boolean) => {
-    allEventTypes.forEach((type) => {
-      const fn = (listeners[type] ??= handleEvent);
-      element.addEventListener(type, fn, listenerOpts(type, raw));
-    });
-  };
-  const removeListeners = () => {
-    allEventTypes.forEach((type) => {
-      const fn = listeners[type];
-      if (fn) element.removeEventListener(type, fn);
-    });
-  };
+	const addListeners = (raw: boolean) => {
+		allEventTypes.forEach((type) => {
+			const fn = (listeners[type] ??= handleEvent);
+			element.addEventListener(type, fn, listenerOpts(type, raw));
+		});
+	};
+	const removeListeners = () => {
+		allEventTypes.forEach((type) => {
+			const fn = listeners[type];
+			if (fn) element.removeEventListener(type, fn);
+		});
+	};
 
-  /* attach for the first time */
-  addListeners(attachedWithRawTouch);
+	/* attach for the first time */
+	addListeners(attachedWithRawTouch);
 
-  /* ---------- mode & handler change hooks --------------------------------------- */
-  const stopMode = cap.onModeChange(() => {
-    /* cursor baseline update for global wrapper */
-    if (scope.type === 'global') {
-      const mode = cap.getActiveInteractionMode();
-      element.style.cursor = mode?.scope === 'global' ? (mode.cursor ?? 'auto') : 'auto';
-    }
+	/* ---------- mode & handler change hooks --------------------------------------- */
+	const stopMode = cap.onModeChange(() => {
+		/* cursor baseline update for global wrapper */
+		if (scope.type === "global") {
+			const mode = cap.getActiveInteractionMode();
+			element.style.cursor =
+				mode?.scope === "global" ? (mode.cursor ?? "auto") : "auto";
+		}
 
-    active = cap.getHandlersForScope(scope);
+		active = cap.getHandlersForScope(scope);
 
-    /* re-attach listeners if wantsRawTouch toggled */
-    const raw = wantsRawTouchNow();
-    if (raw !== attachedWithRawTouch) {
-      removeListeners();
-      addListeners(raw);
-      attachedWithRawTouch = raw;
-    }
-  });
+		/* re-attach listeners if wantsRawTouch toggled */
+		const raw = wantsRawTouchNow();
+		if (raw !== attachedWithRawTouch) {
+			removeListeners();
+			addListeners(raw);
+			attachedWithRawTouch = raw;
+		}
+	});
 
-  const stopHandler = cap.onHandlerChange(() => {
-    active = cap.getHandlersForScope(scope);
-  });
+	const stopHandler = cap.onHandlerChange(() => {
+		active = cap.getHandlersForScope(scope);
+	});
 
-  /* ---------- cursor sync -------------------------------------------------------- */
-  const initialMode = cap.getActiveInteractionMode();
-  const initialCursor = cap.getCurrentCursor();
-  element.style.cursor =
-    scope.type === 'global' && initialMode?.scope !== 'global' ? 'auto' : initialCursor;
+	/* ---------- cursor sync -------------------------------------------------------- */
+	const initialMode = cap.getActiveInteractionMode();
+	const initialCursor = cap.getCurrentCursor();
+	element.style.cursor =
+		scope.type === "global" && initialMode?.scope !== "global"
+			? "auto"
+			: initialCursor;
 
-  const stopCursor = cap.onCursorChange((c) => {
-    if (scope.type === 'global' && cap.getActiveInteractionMode()?.scope !== 'global') return;
-    element.style.cursor = c;
-  });
+	const stopCursor = cap.onCursorChange((c) => {
+		if (
+			scope.type === "global" &&
+			cap.getActiveInteractionMode()?.scope !== "global"
+		)
+			return;
+		element.style.cursor = c;
+	});
 
-  /* ---------- point conversion --------------------------------------------------- */
-  const toPos = (e: { clientX: number; clientY: number }, host: HTMLElement): Position => {
-    if (convertEventToPoint) return convertEventToPoint(e as PointerEvent, host);
-    const r = host.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  };
+	/* ---------- point conversion --------------------------------------------------- */
+	const toPos = (
+		e: { clientX: number; clientY: number },
+		host: HTMLElement,
+	): Position => {
+		if (convertEventToPoint)
+			return convertEventToPoint(e as PointerEvent, host);
+		const r = host.getBoundingClientRect();
+		return { x: e.clientX - r.left, y: e.clientY - r.top };
+	};
 
-  /* ---------- central event handler --------------------------------------------- */
-  function handleEvent(evt: Event) {
-    if (cap.isPaused()) return;
+	/* ---------- central event handler --------------------------------------------- */
+	function handleEvent(evt: Event) {
+		if (cap.isPaused()) return;
 
-    const handlerKey = domEventMap[evt.type];
-    if (!handlerKey || !active?.[handlerKey]) return;
+		const handlerKey = domEventMap[evt.type];
+		if (!handlerKey || !active?.[handlerKey]) return;
 
-    /* preventDefault only when mode really wants raw touch                        */
-    if (
-      evt instanceof TouchEvent &&
-      attachedWithRawTouch &&
-      (evt.type === 'touchmove' || evt.type === 'touchcancel')
-    ) {
-      evt.preventDefault();
-    }
+		/* preventDefault only when mode really wants raw touch                        */
+		if (
+			isTouchEvent(evt) &&
+			attachedWithRawTouch &&
+			(evt.type === "touchmove" || evt.type === "touchcancel")
+		) {
+			evt.preventDefault();
+		}
 
-    // ----- normalise ----------------------------------------------------------------
-    let pos!: Position;
-    let normEvt!: EmbedPdfPointerEvent & {
-      target: EventTarget | null;
-      currentTarget: EventTarget | null;
-    };
+		// ----- normalise ----------------------------------------------------------------
+		let pos!: Position;
+		let normEvt!: EmbedPdfPointerEvent & {
+			target: EventTarget | null;
+			currentTarget: EventTarget | null;
+		};
 
-    if (evt instanceof TouchEvent) {
-      const tp =
-        evt.type === 'touchend' || evt.type === 'touchcancel'
-          ? evt.changedTouches[0]
-          : evt.touches[0];
-      if (!tp) return;
+		if (isTouchEvent(evt)) {
+			const tp =
+				evt.type === "touchend" || evt.type === "touchcancel"
+					? evt.changedTouches[0]
+					: evt.touches[0];
+			if (!tp) return;
 
-      pos = toPos(tp, element);
-      normEvt = {
-        clientX: tp.clientX,
-        clientY: tp.clientY,
-        ctrlKey: evt.ctrlKey,
-        shiftKey: evt.shiftKey,
-        altKey: evt.altKey,
-        metaKey: evt.metaKey,
-        target: evt.target,
-        currentTarget: evt.currentTarget,
-      };
-    } else {
-      const pe = evt as PointerEvent;
-      pos = toPos(pe, element);
-      normEvt = pe;
-    }
+			pos = toPos(tp, element);
+			normEvt = {
+				clientX: tp.clientX,
+				clientY: tp.clientY,
+				ctrlKey: evt.ctrlKey,
+				shiftKey: evt.shiftKey,
+				altKey: evt.altKey,
+				metaKey: evt.metaKey,
+				target: evt.target,
+				currentTarget: evt.currentTarget,
+			};
+		} else {
+			const pe = evt as PointerEvent;
+			pos = toPos(pe, element);
+			normEvt = pe;
+		}
 
-    active[handlerKey]?.(pos, normEvt, cap.getActiveMode());
-  }
+		active[handlerKey]?.(pos, normEvt, cap.getActiveMode());
+	}
 
-  /* ---------- teardown ----------------------------------------------------------- */
-  return () => {
-    removeListeners();
-    stopMode();
-    stopCursor();
-    stopHandler();
-  };
+	/* ---------- teardown ----------------------------------------------------------- */
+	return () => {
+		removeListeners();
+		stopMode();
+		stopCursor();
+		stopHandler();
+	};
 }
